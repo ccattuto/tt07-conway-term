@@ -202,7 +202,7 @@ end
 
 reg [logWIDTH+logHEIGHT-1:0] index2;
 
-always @(posedge clk48 && counter[1]) begin
+always @(posedge clk48) begin
   if (boot_reset) begin
     action_init_complete <= 0;
     index2 <= 0;
@@ -229,7 +229,7 @@ assign cell_x = index3[logWIDTH-1:0];
 assign cell_y = index3[logWIDTH+logHEIGHT-1:logWIDTH];
 parameter WIDTH_MASK = {logWIDTH{1'b1}};
 
-always @(posedge clk48 && counter[1]) begin
+always @(posedge clk48) begin
   if (boot_reset) begin
     action_update_complete <= 0;
     index3 <= 0;
@@ -297,7 +297,7 @@ end
 
 reg [logWIDTH+logHEIGHT-1:0] index4;
 
-always @(posedge clk48 && counter[1]) begin
+always @(posedge clk48) begin
   if (boot_reset) begin
     action_copy_complete <= 0;
     index4 <= 0;
