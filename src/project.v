@@ -36,17 +36,6 @@ module tt_um_ccattuto_conway (
   assign boot_reset = ~rst_n;
 
 
-// 8-bit counter
-
-reg [7:0] counter;
-
-always @(posedge clk48) begin
-  counter <= counter + 1;
-  if (boot_reset) begin
-    counter <= 0;
-  end
-end
-
 // RNG
 
 wire rng;
@@ -101,7 +90,7 @@ UARTReceiver #(
 
 /// board control
 
-parameter logWIDTH = 4, logHEIGHT = 4;
+parameter logWIDTH = 5, logHEIGHT = 4;
 parameter WIDTH = 2 ** logWIDTH;
 parameter HEIGHT = 2 ** logHEIGHT;
 parameter BOARD_SIZE = WIDTH * HEIGHT;
