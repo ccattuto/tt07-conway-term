@@ -73,7 +73,7 @@ wire        uart_rx_error;
 reg         uart_rx_ready;
 
 UARTTransmitter #(
-    .CLOCK_RATE(48000000),
+    .CLOCK_RATE(25000000),
     .BAUD_RATE(115200)
 ) uart_tx_inst (
     .clk(clk48),
@@ -86,7 +86,7 @@ UARTTransmitter #(
 );
 
 UARTReceiver #(
-    .CLOCK_RATE(48000000),
+    .CLOCK_RATE(25000000),
     .BAUD_RATE(115200)
 ) uart_rx_inst(
     .clk(clk48),
@@ -101,7 +101,7 @@ UARTReceiver #(
 
 /// board control
 
-parameter logWIDTH = 5, logHEIGHT = 4;
+parameter logWIDTH = 4, logHEIGHT = 4;
 parameter WIDTH = 2 ** logWIDTH;
 parameter HEIGHT = 2 ** logHEIGHT;
 parameter BOARD_SIZE = WIDTH * HEIGHT;
@@ -115,7 +115,7 @@ reg action_init_complete, action_update_complete, action_copy_complete, action_d
 reg running;
 reg tick;
 reg [31:0] timer;
-parameter UPDATE_INTERVAL = 50000000 / 5;
+parameter UPDATE_INTERVAL = 25000000 / 5;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
