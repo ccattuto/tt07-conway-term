@@ -39,8 +39,7 @@
 `define RESET       3'b001
 `define IDLE        3'b010
 `define DATA_BITS   3'b100
-`define WAIT_STOP   3'b101
-`define STOP_BIT    3'b110
+`define STOP_BIT    3'b101
 
 module UARTReceiver #(
     parameter CLOCK_RATE = 50000000,
@@ -48,111 +47,110 @@ module UARTReceiver #(
 )(
     input  wire       clk,      // clock
     input  wire       reset,    // reset
-    input  wire       en,       // enable
+    input  wire       enable,   // enable
     input  wire       in,       // RX line
     input  wire       ready,    // OK to transmit
     output reg  [7:0] out,      // received data
     output reg        valid,    // RX completed
-    output reg        err       // error while receiving data
+    output reg        error,    // frame error
+    output reg        overrun   // overrun
 );
-    parameter MAX_RATE_RX = CLOCK_RATE / (BAUD_RATE * 16); // 16x oversample
-    parameter RX_CNT_WIDTH = $clog2(MAX_RATE_RX);
-    reg [RX_CNT_WIDTH - 1:0] rxCounter = 0;
+    parameter RX_CLOCK_PERIOD = $rtoi(CLOCK_RATE / (BAUD_RATE * 16) + 0.5); // 16x oversample
+    parameter RX_CNT_WIDTH = $clog2(RX_CLOCK_PERIOD);
+    reg [RX_CNT_WIDTH - 1:0] rxCounter;
 
-    reg [2:0] state;
-    reg [2:0] bitIdx;       // for 8-bit data
-    reg [2:0] inputSw;      // shift reg for input signal state
-    reg [3:0] clockCount;   // count clocks for 16x oversample
-    reg [7:0] receivedData; // buffer for received data
+    reg [2:0] state;        // FSM state
+    reg [2:0] bitIndex;     // bit index
+    reg [2:0] inputReg;     // shift reg for input signal
+    reg [3:0] sampleCount;  // clock count for 16x oversample
+    reg [7:0] data;         // input data buffer
+    reg out_latched;        // out register is valid
 
     always @(posedge clk) begin
-        if (reset || !en) begin
+        if (reset || !enable) begin
             state <= `RESET;
             rxCounter <= 0;
-        end else if (rxCounter < MAX_RATE_RX - 1) begin
-            // RX clock
+        end else if (rxCounter < RX_CLOCK_PERIOD - 1) begin
+            // RX baud generation
             rxCounter <= rxCounter + 1;
-            if (ready) begin
+            if (out_latched) begin
+                out_latched <= 0;
+                valid <= 1;
+            end else if (ready) begin
                 valid <= 0;
             end
         end else begin
             rxCounter <= 0;
 
-            inputSw <= { inputSw[1], inputSw[0], in };
+            inputReg <= { inputReg[1], inputReg[0], in };
 
             case (state)
                 `RESET: begin
                     out <= 8'b0;
-                    err <= 0;
+                    error <= 0;
+                    overrun <= 0;
                     valid <= 0;
-                    inputSw <= 3'b111;
-                    bitIdx <= 3'b0;
-                    clockCount <= 4'b0;
-                    receivedData <= 8'b0;
-                    if (en) begin
+                    inputReg <= 3'b111;
+                    bitIndex <= 3'b0;
+                    sampleCount <= 4'b0;
+                    data <= 8'b0;
+                    out_latched <= 0;
+                    if (enable) begin
                         state <= `IDLE;
                     end
                 end
 
                 `IDLE: begin
-                    if (clockCount >= 4'h5) begin
+                    if (sampleCount >= 4'h5) begin
                         state <= `DATA_BITS;
-                        bitIdx <= 3'b0;
-                        clockCount <= 4'b0;
-                        receivedData <= 8'b0;
-                        err <= 0;
-                    end else if (!(|inputSw) || (|clockCount)) begin
+                        bitIndex <= 3'b0;
+                        sampleCount <= 4'b0;
+                        data <= 8'b0;
+                        out_latched <= 0;
+                        error <= 0;
+                        overrun <= 0;
+                    end else if (!(|inputReg) || (|sampleCount)) begin
                         // Check bit to make sure it's still low
-                        if (|inputSw) begin
-                            err <= 1;
+                        if (|inputReg) begin
+                            error <= 1;
                             state <= `RESET;
                         end
-                        clockCount <= clockCount + 1;
+                        sampleCount <= sampleCount + 1;
                     end
                 end
 
                 // receive 8 bits of data
                 `DATA_BITS: begin
-                    if (&clockCount) begin // save one bit of received data
-                        clockCount <= 4'b0;
-                        receivedData[bitIdx] <= (inputSw[0] & inputSw[1]) | (inputSw[0] & inputSw[2]) | (inputSw[1] & inputSw[2]);
-                        if (&bitIdx) begin
-                            bitIdx <= 3'b0;
-                            state <= `WAIT_STOP;
+                    if (&sampleCount) begin
+                        sampleCount <= 4'b0;
+                        data[bitIndex] <= (inputReg[0] & inputReg[1]) | (inputReg[0] & inputReg[2]) | (inputReg[1] & inputReg[2]);
+                        if (&bitIndex) begin
+                            bitIndex <= 3'b0;
+                            state <= `STOP_BIT;
                         end else begin
-                            bitIdx <= bitIdx + 1;
+                            bitIndex <= bitIndex + 1;
                         end
                     end else begin
-                        clockCount <= clockCount + 1;
+                        sampleCount <= sampleCount + 1;
                     end
                 end
 
-                `WAIT_STOP: begin
-                    if (&clockCount) begin
-                        clockCount <= 4'b0;
-                        state <= `STOP_BIT;
-                    end else begin
-                        clockCount <= clockCount + 1;
-                    end
-                end
-
-                // check for at least half a stop bit
                 `STOP_BIT: begin
-                    if (clockCount == 4'h8) begin
-                        state <= `IDLE;
-                        valid <= 1;
-                        if (!valid) begin // silently drop incoming byte in case of overrun
-                            out <= receivedData;
-                        end
-                        clockCount <= 4'b0;
-                    end else begin
-                        clockCount <= clockCount + 1;
-                        // Check bit to make sure it's still high
-                        if (!(&inputSw)) begin
-                            err <= 1;
+                    if (&sampleCount) begin
+                        if (&inputReg) begin
+                            if (!valid) begin
+                                out <= data;
+                                out_latched <= 1;
+                            end else begin
+                                overrun <= 1;
+                            end
+                            state <= `IDLE;
+                        end else begin
+                            error <= 1;
                             state <= `RESET;
                         end
                     end
+                    sampleCount <= sampleCount + 1;
                 end
 
                 default: state <= `RESET;
