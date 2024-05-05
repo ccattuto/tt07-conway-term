@@ -59,33 +59,35 @@ wire        uart_tx_ready;
 wire [7:0]  uart_rx_data;
 wire        uart_rx_valid;
 wire        uart_rx_error;
+wire        uart_rx_overrun;
 reg         uart_rx_ready;
 
 UARTTransmitter #(
-    .CLOCK_RATE(25000000),
+    .CLOCK_RATE(24000000),
     .BAUD_RATE(115200)
 ) uart_tx_inst (
     .clk(clk48),
-    .reset(boot_reset),     // reset
-    .en(uart_tx_en),        // TX enable
-    .valid(uart_tx_valid),  // start of TX
-    .in(uart_tx_data),      // data to transmit
-    .out(uart_tx),          // TX wire
-    .ready(uart_tx_ready)   // read for TX
+    .reset(boot_reset),       // reset
+    .enable(uart_tx_en),      // TX enable
+    .valid(uart_tx_valid),    // start of TX
+    .in(uart_tx_data),        // data to transmit
+    .out(uart_tx),            // TX signal
+    .ready(uart_tx_ready)     // read for TX data
 );
 
 UARTReceiver #(
-    .CLOCK_RATE(25000000),
+    .CLOCK_RATE(24000000),
     .BAUD_RATE(115200)
-) uart_rx_inst(
+) uart_rx_inst (
     .clk(clk48),
-    .reset(boot_reset),     // reset
-    .en(uart_rx_en),        // RX enable
-    .in(uart_rx),           // RX wire
-    .out(uart_rx_data),     // RX wires
-    .valid(uart_rx_valid),  // RX completed
-    .ready(uart_rx_ready),  // consumed RX data
-    .err(uart_rx_error)     // RX error
+    .reset(boot_reset),       // reset
+    .enable(uart_rx_en),      // RX enable
+    .in(uart_rx),             // RX signal
+    .ready(uart_rx_ready),    // ready to consume RX data
+    .out(uart_rx_data),       // RX wires
+    .valid(uart_rx_valid),    // RX completed
+    .error(uart_rx_error),    // RX error
+    .overrun(uart_rx_overrun) // RX overrun
 );
 
 /// board control
@@ -104,7 +106,7 @@ reg action_init_complete, action_update_complete, action_copy_complete, action_d
 reg running;
 reg tick;
 reg [31:0] timer;
-parameter UPDATE_INTERVAL = 25000000 / 5;
+parameter UPDATE_INTERVAL = 24000000 / 5;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
@@ -112,27 +114,30 @@ always @(posedge clk48) begin
     running <= 0;
     timer <= 0;
     tick <= 0;
-    uart_rx_ready <= 1;
+    uart_rx_ready <= 0;
   end else begin
     case (action)
-     ACTION_WAIT: begin
-        if (uart_rx_valid) begin
+      ACTION_WAIT: begin
+        if (!(uart_rx_valid & uart_rx_ready)) begin
+          uart_rx_ready <= 1;
+        end else begin
           action <= ACTION_INIT;
           uart_rx_ready <= 0;
         end
       end
+
       ACTION_IDLE: begin
-        if (uart_rx_valid) begin
+        if (uart_rx_valid & uart_rx_ready) begin
+          uart_rx_ready <= 0;
+          
           case (uart_rx_data)
             48: begin
               action <= ACTION_INIT;
-              uart_rx_ready <= 0;
             end
 
             49: begin
               if (~running) begin
                 action <= ACTION_UPDATE;
-                uart_rx_ready <= 0;
               end else begin
                 running <= 0;
                 timer <= 0;
@@ -150,37 +155,41 @@ always @(posedge clk48) begin
               action <= ACTION_IDLE;
             end
           endcase
-        end
-        
-        if (running) begin
+        end else if (uart_rx_valid) begin
+          uart_rx_ready <= 1;
+        end else if (running) begin
           if (timer < UPDATE_INTERVAL) begin
             timer <= timer + 1;
           end else begin
-            timer <= 0;
-            action <= ACTION_UPDATE;
             tick <= ~tick;
+            timer <= 0;
             uart_rx_ready <= 0;
+            action <= ACTION_UPDATE;
           end
         end
       end
+
       ACTION_DISPLAY: begin
         if (action_display_complete) begin
           action <= ACTION_IDLE;
-          uart_rx_ready <= 1;
         end
       end
+
       ACTION_INIT: begin
         if (action_init_complete)
           action <= ACTION_DISPLAY;
       end
+
       ACTION_UPDATE: begin
         if (action_update_complete)
           action <= ACTION_COPY;
       end
+
       ACTION_COPY: begin
         if (action_copy_complete)
           action <= ACTION_DISPLAY;
       end
+
       default: begin
         action <= ACTION_IDLE;
       end
