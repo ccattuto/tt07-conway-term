@@ -315,46 +315,41 @@ end
 
 /// UART printout
 
-parameter STRING_INIT_LEN = 57;
-reg [7:0] string_init [0:STRING_INIT_LEN-1];
-initial begin
-  $readmemh("string_init.hex", string_init);
-end
+// parameter STRING_INIT_LEN = 57;
+// reg [7:0] string_init [0:STRING_INIT_LEN-1];
+// initial begin
+//   $readmemh("string_init.hex", string_init);
+// end
 
-parameter TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6, TX_INIT = 7, TX_WAIT_INIT = 8;
-reg [3:0] txstate;
+parameter TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6;
+reg [2:0] txstate;
 reg [logWIDTH+logHEIGHT-1:0] index;
-reg [6:0] txindex;
-reg [7:0] colindex;
+reg [2:0] txindex;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
     uart_tx_valid <= 0;
     index <= 0;
     txindex <= 0;
-    colindex <= 0;
     action_display_complete <= 0;
-    txstate <= TX_INIT;
+    txstate <= TX_IDLE;
   end else if (action == ACTION_DISPLAY) begin
         case (txstate)
           TX_IDLE: begin
             uart_tx_valid <= 0;
             index <= 0;
             txindex <= 0;
-            colindex <= 0;
             if (action_display_complete == 0) begin
               txstate <= TX_SEND_HOME;
             end
           end
 
           TX_SEND: begin
-            if (colindex < WIDTH) begin
+            if (index[logWIDTH-1:0] < WIDTH) begin
               uart_tx_data <= board_state[index] ? 79 : 32; // "O" vs " "
               index <= index + 1;
-              colindex <= colindex + 1;
               txstate <= TX_WAIT;
             end else begin
-              colindex <= 0;
               txstate <= TX_SEND_CRLF;
             end
           end
@@ -425,26 +420,6 @@ always @(posedge clk48) begin
             end else if (uart_tx_valid && !uart_tx_ready) begin
               uart_tx_valid <= 0;
               txstate <= TX_SEND_HOME;
-            end
-          end     
-
-          TX_INIT: begin
-            if (txindex < STRING_INIT_LEN) begin
-              uart_tx_data <= string_init[txindex];
-              txindex <= txindex + 1;
-              txstate <= TX_WAIT_INIT;    
-            end else begin
-              txstate <= TX_IDLE;
-              action_display_complete <= 1;    
-            end
-          end
-
-          TX_WAIT_INIT: begin
-            if (uart_tx_ready && !uart_tx_valid ) begin
-              uart_tx_valid <= 1;
-            end else if (uart_tx_valid && !uart_tx_ready) begin
-              uart_tx_valid <= 0;
-              txstate <= TX_INIT;
             end
           end
 
