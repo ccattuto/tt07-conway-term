@@ -314,10 +314,18 @@ always @(posedge clk48) begin
 end
 
 
-parameter TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6;
-reg [2:0] txstate;
+/// UART printout
+
+localparam STRING_INIT_LEN = 57;
+reg [7:0] string_init [0:STRING_INIT_LEN-1];
+initial begin
+  $readmemh("string_init.hex", string_init);
+end
+
+localparam TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6, TX_INIT = 7, TX_WAIT_INIT = 8;
+reg [3:0] txstate;
 reg [logWIDTH+logHEIGHT-1:0] index;
-reg [2:0] txindex;
+reg [5:0] txindex;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
@@ -325,7 +333,7 @@ always @(posedge clk48) begin
     index <= 0;
     txindex <= 0;
     action_display_complete <= 0;
-    txstate <= TX_IDLE;
+    txstate <= TX_INIT;
   end else if (action == ACTION_DISPLAY) begin
         case (txstate)
           TX_IDLE: begin
@@ -413,6 +421,26 @@ always @(posedge clk48) begin
             end else if (uart_tx_valid && !uart_tx_ready) begin
               uart_tx_valid <= 0;
               txstate <= TX_SEND_HOME;
+            end
+          end
+          
+          TX_INIT: begin
+            if (txindex < STRING_INIT_LEN) begin
+              uart_tx_data <= string_init[txindex];
+              txindex <= txindex + 1;
+              txstate <= TX_WAIT_INIT;    
+            end else begin
+              txstate <= TX_IDLE;
+              action_display_complete <= 1;    
+            end
+          end
+
+          TX_WAIT_INIT: begin
+            if (uart_tx_ready && !uart_tx_valid ) begin
+              uart_tx_valid <= 1;
+            end else if (uart_tx_valid && !uart_tx_ready) begin
+              uart_tx_valid <= 0;
+              txstate <= TX_INIT;
             end
           end
 
