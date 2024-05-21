@@ -93,14 +93,14 @@ UARTReceiver #(
 
 /// board control
 
-localparam logWIDTH = 4, logHEIGHT = 3;
+localparam logWIDTH = 3, logHEIGHT = 3;
 localparam WIDTH = 2 ** logWIDTH;
 localparam HEIGHT = 2 ** logHEIGHT;
 localparam BOARD_SIZE = WIDTH * HEIGHT;
 reg board_state [0:BOARD_SIZE-1];
 reg board_state_next [0:BOARD_SIZE-1];
 
-parameter ACTION_IDLE = 0, ACTION_INIT = 1, ACTION_UPDATE = 2, ACTION_COPY = 3, ACTION_DISPLAY = 4, ACTION_WAIT = 5;
+localparam ACTION_IDLE = 0, ACTION_INIT = 1, ACTION_UPDATE = 2, ACTION_COPY = 3, ACTION_DISPLAY = 4, ACTION_WAIT = 5;
 reg [2:0] action;
 reg action_init_complete, action_update_complete, action_copy_complete, action_display_complete;
 
@@ -423,7 +423,7 @@ always @(posedge clk48) begin
               txstate <= TX_SEND_HOME;
             end
           end
-          
+
           TX_INIT: begin
             if (txindex < STRING_INIT_LEN) begin
               uart_tx_data <= string_init[txindex];
