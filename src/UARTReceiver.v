@@ -35,12 +35,6 @@
 // Originally based on Dmitry Pchelkin's verilog-uart (https://github.com/hell03end/verilog-uart)
 //
 
- // states of state machine
-`define RESET       3'b001
-`define IDLE        3'b010
-`define DATA_BITS   3'b100
-`define STOP_BIT    3'b101
-
 module UARTReceiver #(
     parameter CLOCK_RATE = 50000000,
     parameter BAUD_RATE = 115200
@@ -55,11 +49,14 @@ module UARTReceiver #(
     output reg        error,    // frame error
     output reg        overrun   // overrun
 );
-    parameter RX_CLOCK_PERIOD = $rtoi(CLOCK_RATE / (BAUD_RATE * 16) + 0.5); // 16x oversample
-    parameter RX_CNT_WIDTH = $clog2(RX_CLOCK_PERIOD);
-    reg [RX_CNT_WIDTH - 1:0] rxCounter;
+    localparam RX_PERIOD_COUNT = $rtoi(CLOCK_RATE / (BAUD_RATE * 16) + 0.5); // 16x oversample
+    localparam RX_COUNT_WIDTH = $clog2(RX_PERIOD_COUNT);
+    reg [RX_COUNT_WIDTH-1:0] rxCounter;
 
-    reg [2:0] state;        // FSM state
+    // state machine
+    localparam RESET = 0, IDLE = 1, DATA_BITS = 2, STOP_BIT = 3;
+    reg [1:0] state;
+
     reg [2:0] bitIndex;     // bit index
     reg [2:0] inputReg;     // shift reg for input signal
     reg [3:0] sampleCount;  // clock count for 16x oversample
@@ -68,9 +65,18 @@ module UARTReceiver #(
 
     always @(posedge clk) begin
         if (reset || !enable) begin
-            state <= `RESET;
+            out <= 8'b0;
+            error <= 0;
+            overrun <= 0;
+            valid <= 0;
+            inputReg <= 3'b111;
+            bitIndex <= 3'b0;
+            sampleCount <= 4'b0;
+            data <= 8'b0;
+            out_latched <= 0;
+            state <= RESET;
             rxCounter <= 0;
-        end else if (rxCounter < RX_CLOCK_PERIOD - 1) begin
+        end else if (rxCounter < (RX_PERIOD_COUNT - 1)) begin
             // RX baud generation
             rxCounter <= rxCounter + 1;
             if (out_latched) begin
@@ -85,7 +91,7 @@ module UARTReceiver #(
             inputReg <= { inputReg[1], inputReg[0], in };
 
             case (state)
-                `RESET: begin
+                RESET: begin
                     out <= 8'b0;
                     error <= 0;
                     overrun <= 0;
@@ -96,13 +102,13 @@ module UARTReceiver #(
                     data <= 8'b0;
                     out_latched <= 0;
                     if (enable) begin
-                        state <= `IDLE;
+                        state <= IDLE;
                     end
                 end
 
-                `IDLE: begin
+                IDLE: begin
                     if (sampleCount >= 4'h5) begin
-                        state <= `DATA_BITS;
+                        state <= DATA_BITS;
                         bitIndex <= 3'b0;
                         sampleCount <= 4'b0;
                         data <= 8'b0;
@@ -113,20 +119,20 @@ module UARTReceiver #(
                         // Check bit to make sure it's still low
                         if (|inputReg) begin
                             error <= 1;
-                            state <= `RESET;
+                            state <= RESET;
                         end
                         sampleCount <= sampleCount + 1;
                     end
                 end
 
                 // receive 8 bits of data
-                `DATA_BITS: begin
+                DATA_BITS: begin
                     if (&sampleCount) begin
                         sampleCount <= 4'b0;
                         data[bitIndex] <= (inputReg[0] & inputReg[1]) | (inputReg[0] & inputReg[2]) | (inputReg[1] & inputReg[2]);
                         if (&bitIndex) begin
                             bitIndex <= 3'b0;
-                            state <= `STOP_BIT;
+                            state <= STOP_BIT;
                         end else begin
                             bitIndex <= bitIndex + 1;
                         end
@@ -135,7 +141,7 @@ module UARTReceiver #(
                     end
                 end
 
-                `STOP_BIT: begin
+                STOP_BIT: begin
                     if (&sampleCount) begin
                         if (&inputReg) begin
                             if (!valid) begin
@@ -144,16 +150,18 @@ module UARTReceiver #(
                             end else begin
                                 overrun <= 1;
                             end
-                            state <= `IDLE;
+                            state <= IDLE;
                         end else begin
                             error <= 1;
-                            state <= `RESET;
+                            state <= RESET;
                         end
                     end
                     sampleCount <= sampleCount + 1;
                 end
 
-                default: state <= `RESET;
+                default: begin
+                    state <= RESET;
+                end
             endcase
         end
     end

@@ -11,7 +11,7 @@ module lfsr_rng(
   assign feedback = lfsr_reg[15] ^ lfsr_reg[13] ^ lfsr_reg[12] ^ lfsr_reg[10];
   assign random_bit = lfsr_reg[0]; // Output the LSB of the LFSR
 
-  always @(posedge clk or posedge reset) begin
+  always @(posedge clk) begin
     if (reset) begin
       // Set to a non-zero seed value when reset
       lfsr_reg <= 16'b0001; // Non-zero seed
