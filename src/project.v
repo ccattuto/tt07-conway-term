@@ -25,11 +25,12 @@ module tt_um_ccattuto_conway (
   // UART signals
   wire uart_rx, uart_tx;
   assign uart_rx = ui_in[3];
-  assign uart_tx = uo_out[4];
+  assign uo_out[4] = uart_tx;
 
   // clock
   wire clk48;
   assign clk48 = clk;
+  localparam CLOCK_FREQ = 24000000;
 
   // reset
   wire boot_reset;
@@ -63,7 +64,7 @@ wire        uart_rx_overrun;
 reg         uart_rx_ready;
 
 UARTTransmitter #(
-    .CLOCK_RATE(24000000),
+    .CLOCK_RATE(CLOCK_FREQ),
     .BAUD_RATE(115200)
 ) uart_tx_inst (
     .clk(clk48),
@@ -76,7 +77,7 @@ UARTTransmitter #(
 );
 
 UARTReceiver #(
-    .CLOCK_RATE(24000000),
+    .CLOCK_RATE(CLOCK_FREQ),
     .BAUD_RATE(115200)
 ) uart_rx_inst (
     .clk(clk48),
@@ -92,10 +93,10 @@ UARTReceiver #(
 
 /// board control
 
-parameter logWIDTH = 3, logHEIGHT = 3;
-parameter WIDTH = 2 ** logWIDTH;
-parameter HEIGHT = 2 ** logHEIGHT;
-parameter BOARD_SIZE = WIDTH * HEIGHT;
+localparam logWIDTH = 4, logHEIGHT = 3;
+localparam WIDTH = 2 ** logWIDTH;
+localparam HEIGHT = 2 ** logHEIGHT;
+localparam BOARD_SIZE = WIDTH * HEIGHT;
 reg board_state [0:BOARD_SIZE-1];
 reg board_state_next [0:BOARD_SIZE-1];
 
@@ -106,7 +107,7 @@ reg action_init_complete, action_update_complete, action_copy_complete, action_d
 reg running;
 reg tick;
 reg [31:0] timer;
-parameter UPDATE_INTERVAL = 24000000 / 5;
+localparam UPDATE_INTERVAL = CLOCK_FREQ / 5;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
@@ -225,7 +226,7 @@ wire [logWIDTH-1:0] cell_x;
 wire [logHEIGHT-1:0] cell_y;
 assign cell_x = index3[logWIDTH-1:0];
 assign cell_y = index3[logWIDTH+logHEIGHT-1:logWIDTH];
-parameter WIDTH_MASK = {logWIDTH{1'b1}};
+localparam WIDTH_MASK = {logWIDTH{1'b1}};
 
 always @(posedge clk48) begin
   if (boot_reset) begin
@@ -312,14 +313,6 @@ always @(posedge clk48) begin
   end
 end
 
-
-/// UART printout
-
-// parameter STRING_INIT_LEN = 57;
-// reg [7:0] string_init [0:STRING_INIT_LEN-1];
-// initial begin
-//   $readmemh("string_init.hex", string_init);
-// end
 
 parameter TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6;
 reg [2:0] txstate;
