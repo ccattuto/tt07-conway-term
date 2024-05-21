@@ -92,7 +92,7 @@ UARTReceiver #(
 
 /// board control
 
-parameter logWIDTH = 5, logHEIGHT = 4;
+parameter logWIDTH = 3, logHEIGHT = 3;
 parameter WIDTH = 2 ** logWIDTH;
 parameter HEIGHT = 2 ** logHEIGHT;
 parameter BOARD_SIZE = WIDTH * HEIGHT;
