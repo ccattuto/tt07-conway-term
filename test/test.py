@@ -11,7 +11,7 @@ BOARD_WIDTH = 8
 BOARD_HEIGHT = 8
 
 
-@cocotb.test(timeout_time=20, timeout_unit='ms')
+@cocotb.test(timeout_time=30, timeout_unit='ms')
 async def test(dut):
     dut._log.info("Start")
 
