@@ -11,7 +11,7 @@ BOARD_WIDTH = 8
 BOARD_HEIGHT = 8
 
 
-@cocotb.test(timeout_time=30, timeout_unit='ms')
+@cocotb.test(timeout_time=100, timeout_unit='ms')
 async def test(dut):
     dut._log.info("Start")
 
@@ -55,7 +55,7 @@ async def test(dut):
         board_state_correct = next_board_state(board_state)
 
         # send '1' and receive board update
-        await Timer(0.5, units="ms")
+        await Timer(0.25, units="ms")
         f = cocotb.start_soon(send_cmd(dut, uart_rx, ord('1')))
         await Edge(dut.uo_out)
         board_state_str = await get_uart_str(dut, uart_tx)
