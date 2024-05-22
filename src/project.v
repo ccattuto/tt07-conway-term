@@ -329,6 +329,7 @@ reg [5:0] txindex;
 
 always @(posedge clk48) begin
   if (boot_reset) begin
+    uart_tx_data <= 0;
     uart_tx_valid <= 0;
     index <= 0;
     txindex <= 0;
