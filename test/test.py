@@ -65,7 +65,7 @@ async def test(dut):
         dut._log.info(f"STEP #{count}")
         dut._log.info(board_state)
 
-        assert board_state == board_state_correct
+        assert np.array_equal(board_state, board_state_correct)
 
     dut._log.info("All good!")
 
