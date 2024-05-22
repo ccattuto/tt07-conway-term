@@ -267,12 +267,10 @@ always @(posedge clk48) begin
 
       7: begin // (+1, -1)
         num_neighbors <= num_neighbors + board_state[(cell_y - 1) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-        //num_neighbors <= 3;
       end
 
       8: begin
         board_state_next[index3] <= (board_state[index3] && (num_neighbors == 2)) | (num_neighbors == 3);
-        //board_state_next[index3] <= ~board_state[index3];
 
         neigh_index <= 0;
         num_neighbors <= 0;
@@ -325,6 +323,7 @@ end
 localparam TX_IDLE = 0, TX_SEND = 1, TX_WAIT = 2, TX_SEND_CRLF = 3, TX_WAIT_CRLF = 4, TX_SEND_HOME = 5, TX_WAIT_HOME = 6, TX_INIT = 7, TX_WAIT_INIT = 8;
 reg [3:0] txstate;
 reg [logWIDTH+logHEIGHT-1:0] index;
+reg [logWIDTH:0] colindex;
 reg [5:0] txindex;
 
 always @(posedge clk48) begin
@@ -332,6 +331,7 @@ always @(posedge clk48) begin
     uart_tx_data <= 0;
     uart_tx_valid <= 0;
     index <= 0;
+    colindex <= 0;
     txindex <= 0;
     action_display_complete <= 0;
     txstate <= TX_INIT;
@@ -340,6 +340,7 @@ always @(posedge clk48) begin
           TX_IDLE: begin
             uart_tx_valid <= 0;
             index <= 0;
+            colindex <= 0;
             txindex <= 0;
             if (action_display_complete == 0) begin
               txstate <= TX_SEND_HOME;
@@ -347,11 +348,13 @@ always @(posedge clk48) begin
           end
 
           TX_SEND: begin
-            if (index[logWIDTH-1:0] < WIDTH) begin
+            if (colindex < WIDTH) begin
               uart_tx_data <= board_state[index] ? 79 : 32; // "O" vs " "
               index <= index + 1;
+              colindex <= colindex + 1;
               txstate <= TX_WAIT;
             end else begin
+              colindex <= 0;
               txstate <= TX_SEND_CRLF;
             end
           end
