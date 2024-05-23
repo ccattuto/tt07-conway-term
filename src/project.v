@@ -238,42 +238,50 @@ always @(posedge clk48) begin
   end else if (action == ACTION_UPDATE && !action_update_complete) begin
     case (neigh_index)
       0: begin // (-1, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       1: begin // (0, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+        if ( board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1; 
       end
 
       2: begin // (+1, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       3: begin // (-1, 0)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       4: begin // (+1, 0)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       5: begin // (-1, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       6: begin // (0, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+        if ( board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
       7: begin // (+1, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        if ( board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)] )
+          num_neighbors <= num_neighbors + 1;
         neigh_index <= neigh_index + 1;
       end
 
