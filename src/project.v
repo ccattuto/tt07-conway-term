@@ -205,7 +205,7 @@ always @(posedge clk48) begin
   if (boot_reset) begin
     action_init_complete <= 0;
     index2 <= 0;
-  end else if (action == ACTION_INIT) begin
+  end else if (action == ACTION_INIT && !action_init_complete) begin
     board_state[index2] <= rng;
     if (index2 < BOARD_SIZE - 1) begin
       index2 <= index2 + 1;
@@ -235,10 +235,10 @@ always @(posedge clk48) begin
     index3 <= 0;
     neigh_index <= 0;
     num_neighbors <= 0;
-  end else if (action == ACTION_UPDATE & ~action_update_complete) begin
+  end else if (action == ACTION_UPDATE && !action_update_complete) begin
     case (neigh_index)
       0: begin // (-1, +1)
-        num_neighbors <= num_neighbors + board_state[(cell_y + 1) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
         neigh_index <= neigh_index + 1;
       end
 
@@ -307,7 +307,7 @@ always @(posedge clk48) begin
   if (boot_reset) begin
     action_copy_complete <= 0;
     index4 <= 0;
-  end else if (action == ACTION_COPY) begin
+  end else if (action == ACTION_COPY && !action_copy_complete) begin
     board_state[index4] <= board_state_next[index4];
     if (index4 < BOARD_SIZE - 1) begin
       index4 <= index4 + 1;
@@ -344,7 +344,7 @@ always @(posedge clk48) begin
     txindex <= 0;
     action_display_complete <= 0;
     txstate <= TX_INIT;
-  end else if (action == ACTION_DISPLAY) begin
+  end else if (action == ACTION_DISPLAY && !action_display_complete) begin
         case (txstate)
           TX_IDLE: begin
             uart_tx_valid <= 0;
