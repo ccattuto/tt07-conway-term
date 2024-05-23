@@ -50,7 +50,7 @@ async def test(dut):
     dut._log.info("RANDOMIZED")
     dut._log.info(board_state)
 
-    # advance step by step fro 5 steps and check correct state evolution
+    # advance step by step for 5 steps and check correct state evolution
     for count in range(5):
         board_state_correct = next_board_state(board_state)
 
@@ -62,7 +62,7 @@ async def test(dut):
         await f
 
         board_state = parse_board_state(board_state_str)
-        dut._log.info(f"STEP #{count}")
+        dut._log.info(f"STEP #{count+1}")
         dut._log.info(board_state)
 
         assert np.array_equal(board_state, board_state_correct)
