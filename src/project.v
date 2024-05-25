@@ -303,70 +303,68 @@ always @(posedge clk) begin
     num_neighbors <= 0;
   end else if (action == ACTION_UPDATE && !action_update_complete) begin
     // loop over the 8 neighbors of the current cell
-    if (vsync) begin
-      case (neigh_index)
-        0: begin // (-1, +1)
-          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
+    case (neigh_index)
+      0: begin // (-1, +1)
+        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      1: begin // (0, +1)
+        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1; 
+      end
+
+      2: begin // (+1, +1)
+        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      3: begin // (-1, 0)
+        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      4: begin // (+1, 0)
+        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      5: begin // (-1, -1)
+        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      6: begin // (0, -1)
+        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      7: begin // (+1, -1)
+        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+        neigh_index <= neigh_index + 1;
+      end
+
+      // this state (neigh_index = 8) is used to compute the new state of the current cell
+      // according to the rules of Conway's Game of Life
+      8: begin
+        board_state_next[index3] <= (board_state[index3] && (num_neighbors == 2)) | (num_neighbors == 3);
+
+        neigh_index <= 0;
+        num_neighbors <= 0;
+
+        // advance to next cell to be updated, or terminate
+        if (index3 < BOARD_SIZE - 1) begin
+          index3 <= index3 + 1;
+        end else begin
+          index3 <= 0;
+          action_update_complete <= 1;
         end
+      end
 
-        1: begin // (0, +1)
-          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1; 
-        end
-
-        2: begin // (+1, +1)
-          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        3: begin // (-1, 0)
-          num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        4: begin // (+1, 0)
-          num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        5: begin // (-1, -1)
-          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        6: begin // (0, -1)
-          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        7: begin // (+1, -1)
-          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-          neigh_index <= neigh_index + 1;
-        end
-
-        // this state (neigh_index = 8) is used to compute the new state of the current cell
-        // according to the rules of Conway's Game of Life
-        8: begin
-          board_state_next[index3] <= (board_state[index3] && (num_neighbors == 2)) | (num_neighbors == 3);
-
-          neigh_index <= 0;
-          num_neighbors <= 0;
-
-          // advance to next cell to be updated, or terminate
-          if (index3 < BOARD_SIZE - 1) begin
-            index3 <= index3 + 1;
-          end else begin
-            index3 <= 0;
-            action_update_complete <= 1;
-          end
-        end
-
-        default: begin
-          neigh_index <= 0;
-        end
-      endcase
-    end
+      default: begin
+        neigh_index <= 0;
+      end
+    endcase
   end else begin
     action_update_complete <= 0;
   end 
@@ -382,12 +380,14 @@ always @(posedge clk) begin
     action_copy_complete <= 0;
     index4 <= 0;
   end else if (action == ACTION_COPY && !action_copy_complete) begin
-    board_state[index4] <= board_state_next[index4];
-    if (index4 < BOARD_SIZE - 1) begin
-      index4 <= index4 + 1;
-    end else begin
-      index4 <= 0;
-      action_copy_complete <= 1;
+    if (vsync) begin
+      board_state[index4] <= board_state_next[index4];
+      if (index4 < BOARD_SIZE - 1) begin
+        index4 <= index4 + 1;
+      end else begin
+        index4 <= 0;
+        action_copy_complete <= 1;
+      end
     end
   end else begin
     action_copy_complete <= 0;
