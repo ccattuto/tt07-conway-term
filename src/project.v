@@ -21,7 +21,7 @@ module tt_um_ccattuto_conway (
 // All output pins must be assigned. If not used, assign to 0.
 assign uo_out[3:0] = 0;
 assign uo_out[7:5] = 0;
-assign uio_oe  = 1;
+assign uio_oe  = 8'b1;
 
 // UART signals
 wire uart_rx, uart_tx;
@@ -116,12 +116,12 @@ assign frame_active = (pix_x < 256 && pix_y < 256) ? 1 : 0;
 wire [5:0] cell_index;
 assign cell_index = (pix_y[9:5] << 3) | pix_x[9:5];
 
-wire icon;
-assign icon = (pix_x[4:0] == 0 || pix_y[4:0] == 0) ? 0 : 1;
+wire pixel;
+assign pixel = board_state[cell_index];
 
-assign R = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b0} : 2'b00;
-assign G = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b1} : 2'b00;
-assign B = 2'b01 & video_active & frame_active & icon;
+assign R = (video_active & frame_active) ? {pixel, 1'b0} : 2'b00;
+assign G = (video_active & frame_active) ? {pixel, 1'b1} : 2'b00;
+assign B = {1'b0, video_active & frame_active};
 
 
 // ----------------- RNG ----------------------
