@@ -19,6 +19,7 @@ project:
     - "lfsr_rng.v"
     - "UARTTransmitter.v"
     - "UARTReceiver.v"
+    - "hvsync_generator.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 pinout:

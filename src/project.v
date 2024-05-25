@@ -19,10 +19,9 @@ module tt_um_ccattuto_conway (
 // -------------- I/O PINS ---------------------------
 
 // All output pins must be assigned. If not used, assign to 0.
-assign uio_out = 0;
-assign uio_oe  = 0;
 assign uo_out[3:0] = 0;
 assign uo_out[7:5] = 0;
+assign uio_oe  = 1;
 
 // UART signals
 wire uart_rx, uart_tx;
@@ -35,6 +34,9 @@ localparam CLOCK_FREQ = 24000000;
 // reset
 wire boot_reset;
 assign boot_reset = ~rst_n;
+
+// TinyVGA PMOD
+assign uio_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
 
 
 // -------------- UART TRANSMITTER ---------------------------
@@ -87,7 +89,68 @@ UARTReceiver #(
 );
 
 
-// -------------- RNG ---------------------------
+// ---------------- VGA ---------------
+
+wire hsync;
+wire vsync;
+wire [1:0] R;
+wire [1:0] G;
+wire [1:0] B;
+wire video_active;
+wire [9:0] pix_x;
+wire [9:0] pix_y;
+
+hvsync_generator hvsync_inst (
+  .clk(clk),
+  .reset(~rst_n),
+  .hsync(hsync),
+  .vsync(vsync),
+  .display_on(video_active),
+  .hpos(pix_x),
+  .vpos(pix_y)
+);
+
+wire frame_active;
+assign frame_active = (pix_x >= 80 && pix_x < 640-80) ? 1 : 0;
+
+wire [2:0] cell_x_index;
+wire [2:0] cell_y_index;
+
+assign cell_x_index =
+  (pix_x < 140) ? 0 :
+  (pix_x < 200) ? 1 :
+  (pix_x < 260) ? 2 :
+  (pix_x < 320) ? 3 :
+  (pix_x < 380) ? 4 :
+  (pix_x < 440) ? 5 :
+  (pix_x < 500) ? 6 :
+  (pix_x < 560) ? 7 : 0;
+
+assign cell_y_index =
+  (pix_y < 60) ? 0 :
+  (pix_y < 120) ? 1 :
+  (pix_y < 180) ? 2 :
+  (pix_y < 240) ? 3 :
+  (pix_y < 300) ? 4 :
+  (pix_y < 360) ? 5 :
+  (pix_y < 420) ? 6 : 7;
+
+wire [5:0] cell_index;
+assign cell_index = (cell_y_index << 3) | cell_x_index;
+
+wire [5:0] icon_x;
+wire [5:0] icon_y;
+wire icon;
+assign icon_x = pix_x - 80 - (cell_x_index << 6) + (cell_x_index << 2);
+assign icon_y = pix_y - (cell_y_index << 6) + (cell_y_index << 2);
+assign icon = (icon_x < 2 || icon_x > 57 || icon_y < 2 || icon_y > 57) ? 0 : 1;
+
+assign R = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b0} : 2'b00;
+assign G = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b1} : 2'b00;
+assign B = 2'b01 & video_active & frame_active & icon;
+
+
+// ----------------- RNG ----------------------
 
 wire rng;
 
@@ -266,68 +329,70 @@ always @(posedge clk) begin
     num_neighbors <= 0;
   end else if (action == ACTION_UPDATE && !action_update_complete) begin
     // loop over the 8 neighbors of the current cell
-    case (neigh_index)
-      0: begin // (-1, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      1: begin // (0, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1; 
-      end
-
-      2: begin // (+1, +1)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      3: begin // (-1, 0)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      4: begin // (+1, 0)
-        num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      5: begin // (-1, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      6: begin // (0, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      7: begin // (+1, -1)
-        num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
-        neigh_index <= neigh_index + 1;
-      end
-
-      // this state (neigh_index = 8) is used to compute the new state of the current cell
-      // according to the rules of Conway's Game of Life
-      8: begin
-        board_state_next[index3] <= (board_state[index3] && (num_neighbors == 2)) | (num_neighbors == 3);
-
-        neigh_index <= 0;
-        num_neighbors <= 0;
-
-        // advance to next cell to be updated, or terminate
-        if (index3 < BOARD_SIZE - 1) begin
-          index3 <= index3 + 1;
-        end else begin
-          index3 <= 0;
-          action_update_complete <= 1;
+    if (vsync) begin
+      case (neigh_index)
+        0: begin // (-1, +1)
+          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
         end
-      end
 
-      default: begin
-        neigh_index <= 0;
-      end
-    endcase
+        1: begin // (0, +1)
+          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1; 
+        end
+
+        2: begin // (+1, +1)
+          num_neighbors <= num_neighbors + board_state[((cell_y + 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        3: begin // (-1, 0)
+          num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        4: begin // (+1, 0)
+          num_neighbors <= num_neighbors + board_state[((cell_y + 0) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        5: begin // (-1, -1)
+          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x - 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        6: begin // (0, -1)
+          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 0) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        7: begin // (+1, -1)
+          num_neighbors <= num_neighbors + board_state[((cell_y - 1) & HEIGHT_MASK) << logWIDTH | ((cell_x + 1) & WIDTH_MASK)];
+          neigh_index <= neigh_index + 1;
+        end
+
+        // this state (neigh_index = 8) is used to compute the new state of the current cell
+        // according to the rules of Conway's Game of Life
+        8: begin
+          board_state_next[index3] <= (board_state[index3] && (num_neighbors == 2)) | (num_neighbors == 3);
+
+          neigh_index <= 0;
+          num_neighbors <= 0;
+
+          // advance to next cell to be updated, or terminate
+          if (index3 < BOARD_SIZE - 1) begin
+            index3 <= index3 + 1;
+          end else begin
+            index3 <= 0;
+            action_update_complete <= 1;
+          end
+        end
+
+        default: begin
+          neigh_index <= 0;
+        end
+      endcase
+    end
   end else begin
     action_update_complete <= 0;
   end 
