@@ -140,7 +140,7 @@ assign cell_index = (cell_y_index << 3) | cell_x_index;
 
 assign R = (video_active & frame_active) ? {board_state[cell_index], 1'b0} : 2'b00;
 assign G = (video_active & frame_active) ? {board_state[cell_index], 1'b1} : 2'b00;
-assign B = 2'b01 & video_active & frame_active;
+assign B = {1'b0,  1'b1 & video_active & frame_active};
 
 
 // ----------------- RNG ----------------------
