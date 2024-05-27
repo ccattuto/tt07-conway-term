@@ -164,7 +164,7 @@ localparam HEIGHT = 2 ** logHEIGHT;
 localparam BOARD_SIZE = WIDTH * HEIGHT;
 
 reg board_state [0:BOARD_SIZE-1];         // current state of the simulation
-reg board_state_next [0:BOARD_SIZE-1];    // next state of the simulation
+reg [BOARD_SIZE-1:0] board_state_next;    // next state of the simulation
 
 
 // ----------------- SIMULATION CONTROL VIA UART RX --------------------
@@ -347,7 +347,8 @@ always @(posedge clk) begin
           // this state (neigh_index = 8) is used to compute the new state of the current cell
           // according to the rules of Conway's Game of Life
           8: begin
-            board_state_next[index] <= (board_state[index] && (num_neighbors == 2)) | (num_neighbors == 3);
+            board_state_next <= { board_state_next[BOARD_SIZE-2:0], (board_state[index] && (num_neighbors == 2)) | (num_neighbors == 3) };
+            //board_state_next[index] <= (board_state[index] && (num_neighbors == 2)) | (num_neighbors == 3);
 
             neigh_index <= 0;
             num_neighbors <= 0;
@@ -371,7 +372,9 @@ always @(posedge clk) begin
 
       ACTION_COPY: begin
         if (vsync) begin // synchronize to vsync
-          board_state[index] <= board_state_next[index];
+          // board_state[index] <= board_state_next[index];
+          board_state[index] <= board_state_next[BOARD_SIZE-1];
+          board_state_next <= {board_state_next[BOARD_SIZE-2:0], 1'b0};
           if (index < BOARD_SIZE - 1) begin
             index <= index + 1;
           end else begin
