@@ -528,7 +528,7 @@ end
 
 
 // ROM containing the welcome message with usage instructions
-localparam STRING_INIT_LEN = 47;
+localparam STRING_INIT_LEN = 57;
 reg [7:0] string_init [0:STRING_INIT_LEN-1];
 initial begin
   $readmemh("string_init.hex", string_init);
