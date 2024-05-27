@@ -397,13 +397,6 @@ always @(posedge clk) begin
 
       ACTION_DISPLAY: begin
         case (txstate)
-          TX_IDLE: begin
-            uart_tx_valid <= 0;
-            index <= 0;
-            colindex <= 0;
-            txindex <= 0;
-          end
-
           // Sends ASCII character corresponding to current cell state,
           // then waits (TX_WAIT) for UART transmitted to be ready
           // and advances to the next cell.
@@ -493,20 +486,12 @@ always @(posedge clk) begin
           end
 
           default: begin
-            txstate <= TX_IDLE;
           end
         endcase
       end
 
       ACTION_DISPLAY_INIT: begin
         case (txstate)
-          TX_IDLE: begin
-            uart_tx_valid <= 0;
-            index <= 0;
-            colindex <= 0;
-            txindex <= 0;
-          end
-
           // prints out welcome message and usage instructions stored in string_init (ROM below)
           TX_INIT: begin
             if (txindex < STRING_INIT_LEN) begin
@@ -530,7 +515,6 @@ always @(posedge clk) begin
           end
 
           default: begin
-            txstate <= TX_IDLE;
           end
         endcase
       end
