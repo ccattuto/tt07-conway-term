@@ -152,7 +152,7 @@ async def get_uart_str(dut, uart_tx):
 
     return bytes(blist).decode()
 
-INIT_STRING = "\x1bc" + "\x1b[92m" + "Hi!\r\nspace: start/stop\r\n0: randomize\r\n1: step\r\n"
+INIT_STRING = "\x1bc" + "\x1b[92m" + "space: start/stop\r\n0: randomize\r\n1: step"
 ESC_STRING = "\x1b[;H"
 
 def parse_board_state(state_string):

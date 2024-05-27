@@ -1,4 +1,3 @@
-Hi!
 space: start/stop
 0: randomize
 1: step
