@@ -31,10 +31,6 @@ assign uo_out[4] = uart_tx;
 // clock
 localparam CLOCK_FREQ = 24000000;
 
-// reset
-wire boot_reset;
-assign boot_reset = ~rst_n;
-
 // TinyVGA PMOD
 assign uio_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
 
@@ -53,7 +49,7 @@ UARTTransmitter #(
     .BAUD_RATE(115200)
 ) uart_tx_inst (
     .clk(clk),
-    .reset(boot_reset),       // reset
+    .reset(~rst_n),       // reset
     .enable(uart_tx_en),      // TX enable
     .valid(uart_tx_valid),    // start of TX
     .in(uart_tx_data),        // data to transmit
@@ -78,7 +74,7 @@ UARTReceiver #(
     .BAUD_RATE(115200)
 ) uart_rx_inst (
     .clk(clk),
-    .reset(boot_reset),       // reset
+    .reset(~rst_n),       // reset
     .enable(uart_rx_en),      // RX enable
     .in(uart_rx),             // RX signal
     .ready(uart_rx_ready),    // ready to consume RX data
@@ -149,7 +145,7 @@ wire rng;
 
 lfsr_rng lfsr(
   .clk(clk),
-  .reset(boot_reset),
+  .reset(~rst_n),
   .random_bit(rng)
 );
 
@@ -204,7 +200,7 @@ localparam CELL_DEAD_CHAR = 32;       // " " is used to display dead cells
 // - ACTION_RND randomizes board_state
 
 always @(posedge clk) begin
-  if (boot_reset) begin
+  if (~rst_n) begin
     action <= ACTION_INIT;
     running <= 0;
     timer <= 0;
@@ -370,13 +366,15 @@ always @(posedge clk) begin
       // --------------- ACTION: COPY NEW SIMULATION STATE OVER OLD ONE --------------------
 
       ACTION_COPY: begin
-        board_state[index] <= board_state_next[index];
-        if (index < BOARD_SIZE - 1) begin
-          index <= index + 1;
-        end else begin
-          index <= 0;
-          action <= ACTION_DISPLAY;
-          txstate <= TX_SEND_HOME;
+        if (vsync) begin // synchronize to vsync
+          board_state[index] <= board_state_next[index];
+          if (index < BOARD_SIZE - 1) begin
+            index <= index + 1;
+          end else begin
+            index <= 0;
+            action <= ACTION_DISPLAY;
+            txstate <= TX_SEND_HOME;
+          end
         end
       end
 
