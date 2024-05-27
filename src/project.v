@@ -110,19 +110,6 @@ hvsync_generator hvsync_inst (
   .vpos(pix_y)
 );
 
-// wire frame_active;
-// assign frame_active = (pix_x < 256 && pix_y < 256) ? 1 : 0;
-
-// wire [5:0] cell_index;
-// assign cell_index = (pix_y[9:5] << 3) | pix_x[9:5];
-
-// wire pixel;
-// assign pixel = board_state[cell_index];
-
-// assign R = (video_active & frame_active) ? {pixel, 1'b0} : 2'b00;
-// assign G = (video_active & frame_active) ? {pixel, 1'b1} : 2'b00;
-// assign B = {1'b0, video_active & frame_active};
-
 wire frame_active;
 assign frame_active = (pix_x >= 80 && pix_x < 640-80) ? 1 : 0;
 
