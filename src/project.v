@@ -138,9 +138,20 @@ assign cell_y_index =
 wire [5:0] cell_index;
 assign cell_index = (cell_y_index << 3) | cell_x_index;
 
-assign R = (video_active & frame_active) ? {board_state[cell_index], 1'b0} : 2'b00;
-assign G = (video_active & frame_active) ? {board_state[cell_index], 1'b1} : 2'b00;
-assign B = {1'b0,  1'b1 & video_active & frame_active};
+wire [5:0] icon_x;
+wire [5:0] icon_y;
+wire icon;
+assign icon_x = pix_x - 80 - (cell_x_index << 6) + (cell_x_index << 2);
+assign icon_y = pix_y - (cell_y_index << 6) + (cell_y_index << 2);
+assign icon = (icon_x < 2 || icon_x > 57 || icon_y < 2 || icon_y > 57) ? 0 : 1;
+
+assign R = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b0} : 2'b00;
+assign G = (video_active & frame_active) ? {board_state[cell_index] & icon, 1'b1} : 2'b00;
+assign B = {1'b0, video_active & frame_active};
+
+// assign R = (video_active & frame_active) ? {board_state[cell_index], 1'b0} : 2'b00;
+// assign G = (video_active & frame_active) ? {board_state[cell_index], 1'b1} : 2'b00;
+// assign B = {1'b0,  1'b1 & video_active & frame_active};
 
 
 // ----------------- RNG ----------------------
