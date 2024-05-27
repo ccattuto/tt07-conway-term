@@ -31,6 +31,10 @@ assign uo_out[4] = uart_tx;
 // clock
 localparam CLOCK_FREQ = 24000000;
 
+// reset
+wire boot_reset;
+assign boot_reset = ~rst_n;
+
 // TinyVGA PMOD
 assign uio_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
 
@@ -49,7 +53,7 @@ UARTTransmitter #(
     .BAUD_RATE(115200)
 ) uart_tx_inst (
     .clk(clk),
-    .reset(~rst_n),       // reset
+    .reset(boot_reset),       // reset
     .enable(uart_tx_en),      // TX enable
     .valid(uart_tx_valid),    // start of TX
     .in(uart_tx_data),        // data to transmit
@@ -74,7 +78,7 @@ UARTReceiver #(
     .BAUD_RATE(115200)
 ) uart_rx_inst (
     .clk(clk),
-    .reset(~rst_n),       // reset
+    .reset(boot_reset),       // reset
     .enable(uart_rx_en),      // RX enable
     .in(uart_rx),             // RX signal
     .ready(uart_rx_ready),    // ready to consume RX data
@@ -98,7 +102,7 @@ wire [9:0] pix_y;
 
 hvsync_generator hvsync_inst (
   .clk(clk),
-  .reset(~rst_n),
+  .reset(boot_reset),
   .hsync(hsync),
   .vsync(vsync),
   .display_on(video_active),
@@ -145,7 +149,7 @@ wire rng;
 
 lfsr_rng lfsr(
   .clk(clk),
-  .reset(~rst_n),
+  .reset(boot_reset),
   .random_bit(rng)
 );
 
@@ -200,7 +204,7 @@ localparam CELL_DEAD_CHAR = 32;       // " " is used to display dead cells
 // - ACTION_RND randomizes board_state
 
 always @(posedge clk) begin
-  if (~rst_n) begin
+  if (boot_reset) begin
     action <= ACTION_INIT;
     running <= 0;
     timer <= 0;
