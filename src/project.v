@@ -177,7 +177,7 @@ reg [BOARD_SIZE-1:0] board_state_next;    // next state of the simulation
 
 // ----------------- SIMULATION CONTROL VIA UART RX --------------------
 
-localparam ACTION_IDLE = 0, ACTION_UPDATE = 1, ACTION_COPY = 2, ACTION_DISPLAY = 3, ACTION_RND = 4, ACTION_INIT = 5, ACTION_LOAD_PATTERN = 6, ACTION_DISPLAY_INIT = 7;
+localparam ACTION_IDLE = 0, ACTION_UPDATE = 1, ACTION_COPY = 2, ACTION_DISPLAY = 3, ACTION_RND = 4, ACTION_INIT = 5, ACTION_LOAD_INIT = 6, ACTION_DISPLAY_INIT = 7;
 reg [2:0] action;
 
 reg running;  // high when simulation is advancing automatically based on timer
@@ -235,7 +235,7 @@ always @(posedge clk) begin
         if (!(uart_rx_valid & uart_rx_ready)) begin
           uart_rx_ready <= 1;
         end else begin
-          action <= ACTION_LOAD_PATTERN;
+          action <= ACTION_LOAD_INIT;
           uart_rx_ready <= 0;
         end
       end
@@ -300,7 +300,7 @@ always @(posedge clk) begin
       // ----------------- ACTION: LOAD (LONG) PERIODIC PATTERN --------------------
       // (found using https://github.com/urish/tt05-silife-max/tree/main/utils)
 
-      ACTION_LOAD_PATTERN: begin
+      ACTION_LOAD_INIT: begin
         board_state[index] <= board_state_init[index];
         if (index < BOARD_SIZE - 1) begin
           index <= index + 1;
